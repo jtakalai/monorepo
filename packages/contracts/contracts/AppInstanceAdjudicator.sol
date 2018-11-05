@@ -248,6 +248,10 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelOpen(_id)
   {
+
+    // FIXME: Before merging, the timeout variable has been removed to get
+    // a stack too deep error to go away ... need to refactor function.
+
     AppInstance storage c = apps[_id];
 
     require(
