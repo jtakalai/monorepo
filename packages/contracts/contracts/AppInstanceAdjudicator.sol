@@ -76,7 +76,7 @@ contract AppInstanceAdjudicator {
     uint256 disputeCounter;
   }
 
-  struct StateChannel {
+  struct AppInstance {
     Auth auth;
     State state;
     Transfer.Transaction resolution;
@@ -85,11 +85,11 @@ contract AppInstanceAdjudicator {
     uint256 defaultTimeout;
   }
 
-  mapping (bytes32 => StateChannel) channels;
+  mapping (bytes32 => AppInstance) apps;
 
   modifier onlyWhenChannelOpen(bytes32 _id) {
     require(
-      !isStateTerminal(channels[_id].state),
+      !isStateTerminal(apps[_id].state),
       "State has already been settled"
     );
     _;
@@ -97,19 +97,19 @@ contract AppInstanceAdjudicator {
 
   modifier onlyWhenChannelDispute(bytes32 _id) {
     require(
-      channels[_id].state.status == Status.DISPUTE,
+      apps[_id].state.status == Status.DISPUTE,
       "State is not being disputed"
     );
     _;
   }
 
   modifier onlyWhenChannelClosed(bytes32 _id) {
-    require(isStateTerminal(channels[_id].state), "State is still unsettled");
+    require(isStateTerminal(apps[_id].state), "State is still unsettled");
     _;
   }
 
-  function getChannel(bytes32 _id) external view returns (StateChannel) {
-    return channels[_id];
+  function getAppInstance(bytes32 _id) external view returns (AppInstance) {
+    return apps[_id];
   }
 
   /// @notice Contract constructor
@@ -118,7 +118,7 @@ contract AppInstanceAdjudicator {
   /// @param app Hash of the application's interface
   /// @param terms Hash of a `Transfer.Terms` object commiting to the terms of the app
   /// @param timeout The default timeout (in blocks) in case of dispute
-  function registerChannel(
+  function registerAppInstance(
     address owner,
     address[] signingKeys,
     bytes32 app,
@@ -133,7 +133,7 @@ contract AppInstanceAdjudicator {
       )
     );
 
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     c.auth.owner = owner;
     c.auth.signingKeys = signingKeys;
@@ -145,31 +145,31 @@ contract AppInstanceAdjudicator {
   /// @notice A getter function for the owner of the state channel
   /// @return The address of the `owner`
   function getOwner(bytes32 _id) external view returns (address) {
-    return channels[_id].auth.owner;
+    return apps[_id].auth.owner;
   }
 
   /// @notice A getter function for the signing keys of the state channel
   /// @return The addresses of the `signingKeys`
   function getSigningKeys(bytes32 _id) external view returns (address[]) {
-    return channels[_id].auth.signingKeys;
+    return apps[_id].auth.signingKeys;
   }
 
   /// @notice A getter function for the latest agreed nonce of the state channel
   /// @return The uint value of the latest agreed nonce
   function latestNonce(bytes32 _id) external view returns (uint256) {
-    return channels[_id].state.nonce;
+    return apps[_id].state.nonce;
   }
 
   /// @notice A helper method to determine whether or not the channel is closed
   /// @return A boolean representing whether or not the state channel is closed
   function isClosed(bytes32 _id) external view returns (bool) {
-    return isStateTerminal(channels[_id].state);
+    return isStateTerminal(apps[_id].state);
   }
 
   /// @notice A getter function for the resolution if one is set
   /// @return A `Transfer.Transaction` object representing the resolution of the channel
   function getResolution(bytes32 _id) public view returns (Transfer.Transaction) {
-    return channels[_id].resolution;
+    return apps[_id].resolution;
   }
 
   /// @notice Set the application state to a given value.
@@ -190,7 +190,7 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelOpen(_id)
   {
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     if (msg.sender != c.auth.owner) {
       bytes32 h = computeStateHash(_id, appStateHash, nonce, timeout);
@@ -248,7 +248,7 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelOpen(_id)
   {
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     require(
       nonce > c.state.nonce,
@@ -338,7 +338,7 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelDispute(_id)
   {
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     require(
       keccak256(appState) == c.state.appStateHash,
@@ -393,7 +393,7 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelDispute(_id)
   {
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     bytes32 stateHash = computeStateHash(
       _id,
@@ -424,7 +424,7 @@ contract AppInstanceAdjudicator {
     public
     onlyWhenChannelClosed(_id)
   {
-    StateChannel storage c = channels[_id];
+    AppInstance storage c = apps[_id];
 
     require(
       keccak256(finalState) == c.state.appStateHash,
@@ -471,7 +471,7 @@ contract AppInstanceAdjudicator {
     return keccak256(
       abi.encodePacked(
         byte(0x19),
-        channels[_id].auth.signingKeys,
+        apps[_id].auth.signingKeys,
         nonce,
         timeout,
         stateHash
@@ -538,11 +538,11 @@ contract AppInstanceAdjudicator {
     );
 
     require(
-      channels[_id].auth.signingKeys[idx] != address(0),
+      apps[_id].auth.signingKeys[idx] != address(0),
       "Application returned invalid turn taker index"
     );
 
-    return channels[_id].auth.signingKeys[idx];
+    return apps[_id].auth.signingKeys[idx];
   }
 
   /// @notice Execute the application's applyAction function to compute new state

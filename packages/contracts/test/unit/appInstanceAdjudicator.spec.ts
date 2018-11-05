@@ -58,7 +58,7 @@ contract("AppInstanceAdjudicator", (accounts: string[]) => {
   let sendSignedFinalizationToChain: () => Promise<any>;
 
   const latestState = async () => {
-    const c = await judge.functions.getChannel(TEST_ID);
+    const c = await judge.functions.getAppInstance(TEST_ID);
     return c.state.appStateHash;
   };
   const latestNonce = async () => judge.functions.latestNonce(TEST_ID);
@@ -76,7 +76,7 @@ contract("AppInstanceAdjudicator", (accounts: string[]) => {
 
     judge = await appInstanceAdjudicator.deploy(unlockedAccount);
 
-    await judge.functions.registerChannel(
+    await judge.functions.registerAppInstance(
       accounts[0],
       [A.address, B.address],
       ethers.constants.HashZero,
@@ -127,7 +127,7 @@ contract("AppInstanceAdjudicator", (accounts: string[]) => {
   });
 
   it("should start without a dispute if deployed", async () => {
-    const state = (await judge.functions.getChannel(TEST_ID)).state;
+    const state = (await judge.functions.getAppInstance(TEST_ID)).state;
     expect(state.status).to.be.equal(Status.ON);
   });
 
