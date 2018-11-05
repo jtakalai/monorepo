@@ -412,7 +412,7 @@ contract AppInstanceAdjudicator {
     c.state.status = Status.ON;
     c.state.latestSubmitter = msg.sender;
 
-    emit DisputeCancelled(_id,msg.sender);
+    emit DisputeCancelled(_id, msg.sender);
   }
 
   /// @notice Fetch and store the resolution of a state channel application
