@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.25;
 pragma experimental "ABIEncoderV2";
 
 import "./lib/Signatures.sol";
@@ -6,12 +6,12 @@ import "./lib/StaticCall.sol";
 import "./lib/Transfer.sol";
 
 
-/// @title StateChannelAdjudicator - A generalized state channel application contract
+/// @title AppInstanceAdjudicator - A generalized state channel application contract
 /// @author Liam Horne - <liam@l4v.io>
 /// @notice Supports the adjudication and timeout guarantees required by state channel
 /// applications to be secure in a gas and storage-optimized manner. Resolves to a
 /// `Transfer.Transaction` when the channel is closed.
-contract StateChannelAdjudicator {
+contract AppInstanceAdjudicator {
 
   using Transfer for Transfer.Transaction;
   using StaticCall for address;
@@ -106,6 +106,10 @@ contract StateChannelAdjudicator {
   modifier onlyWhenChannelClosed(bytes32 _id) {
     require(isStateTerminal(channels[_id].state), "State is still unsettled");
     _;
+  }
+
+  function getChannel(bytes32 _id) external view returns (StateChannel) {
+    return channels[_id];
   }
 
   /// @notice Contract constructor
@@ -223,7 +227,6 @@ contract StateChannelAdjudicator {
   /// @param app An `App` struct specifying the application logic
   /// @param appState The ABI encoded application state
   /// @param nonce The nonce of the agreed upon state
-  /// @param timeout A dynamic timeout value representing the timeout for this state
   /// @param action The ABI encoded action the submitter wishes to take
   /// @param appStateSignatures A sorted bytes string of concatenated signatures on the
   /// `appState` state, signed by all `signingKeys`
@@ -237,7 +240,6 @@ contract StateChannelAdjudicator {
     App app,
     bytes appState,
     uint256 nonce,
-    uint256 timeout,
     bytes action,
     bytes appStateSignatures,
     bytes actionSignature,
@@ -253,10 +255,9 @@ contract StateChannelAdjudicator {
       "Tried to create dispute with outdated state"
     );
 
-    bytes32 appStateHash = keccak256(appState);
     require(
       appStateSignatures.verifySignatures(
-        computeStateHash(_id, appStateHash, nonce, timeout),
+        computeStateHash(_id, keccak256(appState), nonce, 1337),
         c.auth.signingKeys
       ),
       "Invalid signatures"
@@ -264,15 +265,17 @@ contract StateChannelAdjudicator {
 
     address turnTaker = getAppTurnTaker(_id, app, appState);
 
-    bytes32 actionHash = computeActionHash(
-      turnTaker,
-      keccak256(appState),
-      action,
-      nonce,
-      c.state.disputeNonce
-    );
     require(
-      turnTaker == actionSignature.recoverKey(actionHash, 0),
+      turnTaker == actionSignature.recoverKey(
+        computeActionHash(
+          turnTaker,
+          keccak256(appState),
+          action,
+          nonce,
+          c.state.disputeNonce
+        ),
+        0
+      ),
       "Action must have been signed by correct turn taker"
     );
 
@@ -280,9 +283,9 @@ contract StateChannelAdjudicator {
       _id,
       msg.sender,
       c.state.disputeCounter + 1,
-      appStateHash,
+      keccak256(appState),
       nonce,
-      block.number + timeout
+      block.number + 1337
     );
 
     bytes memory newAppState = executeAppApplyAction(app, appState, action);
@@ -300,7 +303,7 @@ contract StateChannelAdjudicator {
 
       emit DisputeFinalized(_id, msg.sender, newAppState);
     } else {
-      c.state.finalizesAt = block.number + timeout;
+      c.state.finalizesAt = block.number + 1337;
       c.state.status = Status.DISPUTE;
 
       emit DisputeProgressed(
@@ -310,7 +313,7 @@ contract StateChannelAdjudicator {
         action,
         newAppState,
         c.state.disputeNonce,
-        block.number + timeout
+        block.number + 1337
       );
     }
   }

@@ -31,9 +31,18 @@ const computeHash = (stateHash: string, nonce: number, timeout: number) =>
     ["0x19", [A.address, B.address], nonce, timeout, stateHash]
   );
 
-const TEST_ID = 0x4cbac8b1e81fb18a98bbaf29b9bfe307885561f71b76bd4680d7aec9d0ddfcfd;
+contract("AppInstanceAdjudicator", (accounts: string[]) => {
+  const TEST_ID = ethers.utils.solidityKeccak256(
+    ["address", "address[]", "bytes32", "bytes32", "uint256"],
+    [
+      accounts[0],
+      [A.address, B.address],
+      ethers.constants.HashZero,
+      ethers.constants.HashZero,
+      10
+    ]
+  );
 
-contract("StateChannel", (accounts: string[]) => {
   let judge: ethers.Contract;
 
   let sendUpdateToChainWithNonce: (
@@ -49,12 +58,32 @@ contract("StateChannel", (accounts: string[]) => {
   let sendSignedFinalizationToChain: () => Promise<any>;
 
   const latestState = async () => {
-    const c = await judge.functions.channels(TEST_ID);
+    const c = await judge.functions.getChannel(TEST_ID);
     return c.state.appStateHash;
   };
   const latestNonce = async () => judge.functions.latestNonce(TEST_ID);
 
-  beforeAll(async () => {
+  // @ts-ignore
+  beforeEach(async () => {
+    const appInstanceAdjudicator = await AbstractContract.loadBuildArtifact(
+      "AppInstanceAdjudicator",
+      {
+        StaticCall: AbstractContract.loadBuildArtifact("StaticCall"),
+        Signatures: AbstractContract.loadBuildArtifact("Signatures"),
+        Transfer: AbstractContract.loadBuildArtifact("Transfer")
+      }
+    );
+
+    judge = await appInstanceAdjudicator.deploy(unlockedAccount);
+
+    await judge.functions.registerChannel(
+      accounts[0],
+      [A.address, B.address],
+      ethers.constants.HashZero,
+      ethers.constants.HashZero,
+      10
+    );
+
     sendUpdateToChainWithNonce = (nonce: number, appState?: string) =>
       judge.functions.setState(
         TEST_ID,
@@ -87,109 +116,96 @@ contract("StateChannel", (accounts: string[]) => {
           unlockedAccount
         )
       );
-
-    const stateChannelAdjudicator = await AbstractContract.loadBuildArtifact(
-      "StateChannelAdjudicator"
-    );
-
-    judge = await stateChannelAdjudicator.deploy(unlockedAccount);
-    await judge.functions.registerChannel(
-      accounts[0],
-      [A.address, B.address],
-      ethers.constants.HashZero,
-      ethers.constants.HashZero,
-      10
-    );
   });
 
   it("constructor sets initial state", async () => {
     const owner = await judge.functions.getOwner(TEST_ID);
-    const signingKeys = await judge.functions.getSigningKeys();
-    owner.should.be.equalIgnoreCase(accounts[0]);
-    signingKeys[0].should.be.equalIgnoreCase(A.address);
-    signingKeys[1].should.be.equalIgnoreCase(B.address);
+    const signingKeys = await judge.functions.getSigningKeys(TEST_ID);
+    expect(owner).to.be.equalIgnoreCase(accounts[0]);
+    expect(signingKeys[0]).to.be.equalIgnoreCase(A.address);
+    expect(signingKeys[1]).to.be.equalIgnoreCase(B.address);
   });
 
   it("should start without a dispute if deployed", async () => {
-    const state = (await judge.functions.channels(TEST_ID)).state;
-    state.status.should.be.equal(Status.ON);
+    const state = (await judge.functions.getChannel(TEST_ID)).state;
+    expect(state.status).to.be.equal(Status.ON);
   });
 
   describe("updating app state", async () => {
     describe("with owner", async () => {
       it("should work with higher nonce", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendUpdateToChainWithNonce(1);
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
       });
 
       it("should work many times", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendUpdateToChainWithNonce(1);
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
         await sendUpdateToChainWithNonce(2);
-        (await latestNonce()).should.be.bignumber.eq(2);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(2));
         await sendUpdateToChainWithNonce(3);
-        (await latestNonce()).should.be.bignumber.eq(3);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(3));
       });
 
       it("should work with much higher nonce", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendUpdateToChainWithNonce(1000);
-        (await latestNonce()).should.be.bignumber.eq(1000);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1000));
       });
 
       it("shouldn't work with an equal nonce", async () => {
         await Utils.assertRejects(sendUpdateToChainWithNonce(0));
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
       });
 
       it("shouldn't work with an lower nonce", async () => {
         await sendUpdateToChainWithNonce(1);
         await Utils.assertRejects(sendUpdateToChainWithNonce(0));
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
       });
     });
 
     describe("with signing keys", async () => {
       it("should work with higher nonce", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendSignedUpdateToChainWithNonce(1);
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
       });
 
       it("should work many times", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendSignedUpdateToChainWithNonce(1);
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
         await sendSignedUpdateToChainWithNonce(2);
-        (await latestNonce()).should.be.bignumber.eq(2);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(2));
         await sendSignedUpdateToChainWithNonce(3);
-        (await latestNonce()).should.be.bignumber.eq(3);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(3));
       });
 
       it("should work with much higher nonce", async () => {
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
         await sendSignedUpdateToChainWithNonce(1000);
-        (await latestNonce()).should.be.bignumber.eq(1000);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1000));
       });
 
       it("shouldn't work with an equal nonce", async () => {
         await Utils.assertRejects(sendSignedUpdateToChainWithNonce(0));
-        (await latestNonce()).should.be.bignumber.eq(0);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(0));
       });
 
       it("shouldn't work with an lower nonce", async () => {
         await sendSignedUpdateToChainWithNonce(1);
         await Utils.assertRejects(sendSignedUpdateToChainWithNonce(0));
-        (await latestNonce()).should.be.bignumber.eq(1);
+        expect(await latestNonce()).to.be.eql(new ethers.utils.BigNumber(1));
       });
     });
   });
 
   describe("finalizing app state", async () => {
     it("should work with owner", async () => {
-      false.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(false);
       await judge.functions.setState(
         TEST_ID,
         await latestState(),
@@ -197,22 +213,22 @@ contract("StateChannel", (accounts: string[]) => {
         0,
         ethers.constants.HashZero
       );
-      true.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(true);
     });
 
     it("should work with keys", async () => {
-      false.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(false);
       await sendSignedFinalizationToChain();
-      true.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(true);
     });
   });
 
   describe("waiting for timeout", async () => {
     it("should block updates after the timeout", async () => {
-      false.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(false);
       await sendUpdateToChainWithNonce(1);
       await Utils.mineBlocks(TIMEOUT);
-      true.should.be.equal(await judge.functions.isClosed(TEST_ID));
+      expect(await judge.functions.isClosed(TEST_ID)).to.be.equal(true);
       await Utils.assertRejects(sendUpdateToChainWithNonce(2));
       await Utils.assertRejects(sendSignedUpdateToChainWithNonce(0));
     });

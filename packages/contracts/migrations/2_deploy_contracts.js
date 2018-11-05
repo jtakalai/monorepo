@@ -11,12 +11,16 @@ const Signatures = artifacts.require("Signatures");
 const StaticCall = artifacts.require("StaticCall");
 const Transfer = artifacts.require("Transfer");
 const VirtualAppAgreement = artifacts.require("VirtualAppAgreement");
-const StateChannelAdjudicator = loader.require("StateChannelAdjudicator");
+const AppInstanceAdjudicator = artifacts.require("AppInstanceAdjudicator");
 const ETHBalanceRefundApp = artifacts.require("ETHBalanceRefundApp");
 
 module.exports = (deployer, network) => {
   deployer.deploy(Transfer).then(instance => {
-    deployer.link(Transfer, [VirtualAppAgreement, ConditionalTransaction]);
+    deployer.link(Transfer, [
+      VirtualAppAgreement,
+      ConditionalTransaction,
+      AppInstanceAdjudicator
+    ]);
     if (!tdr.isDryRunNetworkName(network)) {
       return tdr.appendInstance(instance);
     }
@@ -26,7 +30,7 @@ module.exports = (deployer, network) => {
     deployer.link(StaticCall, [
       ConditionalTransaction,
       Conditional,
-      StateChannelAdjudicator
+      AppInstanceAdjudicator
     ]);
     if (!tdr.isDryRunNetworkName(network)) {
       return tdr.appendInstance(instance);
@@ -34,9 +38,7 @@ module.exports = (deployer, network) => {
   });
 
   deployer.deploy(Signatures).then(instance => {
-    deployer.link(StaticCall, [
-      StateChannelAdjudicator
-    ]);
+    deployer.link(Signatures, [AppInstanceAdjudicator]);
     if (!tdr.isDryRunNetworkName(network)) {
       return tdr.appendInstance(instance);
     }
@@ -85,6 +87,12 @@ module.exports = (deployer, network) => {
   });
 
   deployer.deploy(Registry).then(instance => {
+    if (!tdr.isDryRunNetworkName(network)) {
+      return tdr.appendInstance(instance);
+    }
+  });
+
+  deployer.deploy(AppInstanceAdjudicator).then(instance => {
     if (!tdr.isDryRunNetworkName(network)) {
       return tdr.appendInstance(instance);
     }
