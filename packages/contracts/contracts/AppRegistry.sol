@@ -133,13 +133,13 @@ contract AppRegistry {
       )
     );
 
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
-    c.auth.owner = owner;
-    c.auth.signingKeys = signingKeys;
-    c.termsHash = terms;
-    c.appHash = app;
-    c.defaultTimeout = timeout;
+    appInstance.auth.owner = owner;
+    appInstance.auth.signingKeys = signingKeys;
+    appInstance.termsHash = terms;
+    appInstance.appHash = app;
+    appInstance.defaultTimeout = timeout;
   }
 
   /// @notice A getter function for the owner of the state channel
@@ -190,36 +190,36 @@ contract AppRegistry {
     public
     onlyWhenChannelOpen(_id)
   {
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
-    if (msg.sender != c.auth.owner) {
+    if (msg.sender != appInstance.auth.owner) {
       bytes32 h = computeStateHash(_id, appStateHash, nonce, timeout);
       require(
-        signatures.verifySignatures(h, c.auth.signingKeys),
+        signatures.verifySignatures(h, appInstance.auth.signingKeys),
         "Invalid signatures"
       );
     }
 
     if (timeout > 0) {
       require(
-        nonce > c.state.nonce,
+        nonce > appInstance.state.nonce,
         "Tried to set state with non-new state"
       );
-      c.state.status = Status.DISPUTE;
+      appInstance.state.status = Status.DISPUTE;
     } else {
       require(
-        nonce >= c.state.nonce,
+        nonce >= appInstance.state.nonce,
         "Tried to finalize state with stale state"
       );
-      c.state.status = Status.OFF;
+      appInstance.state.status = Status.OFF;
     }
 
-    c.state.appStateHash = appStateHash;
-    c.state.nonce = nonce;
-    c.state.disputeNonce = 0;
-    c.state.finalizesAt = block.number + timeout;
-    c.state.disputeCounter += 1;
-    c.state.latestSubmitter = msg.sender;
+    appInstance.state.appStateHash = appStateHash;
+    appInstance.state.nonce = nonce;
+    appInstance.state.disputeNonce = 0;
+    appInstance.state.finalizesAt = block.number + timeout;
+    appInstance.state.disputeCounter += 1;
+    appInstance.state.latestSubmitter = msg.sender;
   }
 
   /// @notice Create a dispute regarding the latest signed state and immediately after,
@@ -252,17 +252,17 @@ contract AppRegistry {
     // FIXME: Before merging, the timeout variable has been removed to get
     // a stack too deep error to go away ... need to refactor function.
 
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
     require(
-      nonce > c.state.nonce,
+      nonce > appInstance.state.nonce,
       "Tried to create dispute with outdated state"
     );
 
     require(
       appStateSignatures.verifySignatures(
         computeStateHash(_id, keccak256(appState), nonce, 1337),
-        c.auth.signingKeys
+        appInstance.auth.signingKeys
       ),
       "Invalid signatures"
     );
@@ -276,7 +276,7 @@ contract AppRegistry {
           keccak256(appState),
           action,
           nonce,
-          c.state.disputeNonce
+          appInstance.state.disputeNonce
         ),
         0
       ),
@@ -286,7 +286,7 @@ contract AppRegistry {
     emit DisputeStarted(
       _id,
       msg.sender,
-      c.state.disputeCounter + 1,
+      appInstance.state.disputeCounter + 1,
       keccak256(appState),
       nonce,
       block.number + 1337
@@ -294,21 +294,21 @@ contract AppRegistry {
 
     bytes memory newAppState = executeAppApplyAction(app, appState, action);
 
-    c.state.appStateHash = keccak256(newAppState);
-    c.state.nonce = nonce;
-    c.state.disputeNonce = 0;
-    c.state.disputeCounter += 1;
-    c.state.latestSubmitter = msg.sender;
+    appInstance.state.appStateHash = keccak256(newAppState);
+    appInstance.state.nonce = nonce;
+    appInstance.state.disputeNonce = 0;
+    appInstance.state.disputeCounter += 1;
+    appInstance.state.latestSubmitter = msg.sender;
 
     if (claimFinal) {
       require(isAppStateTerminal(app, newAppState));
-      c.state.finalizesAt = block.number;
-      c.state.status = Status.OFF;
+      appInstance.state.finalizesAt = block.number;
+      appInstance.state.status = Status.OFF;
 
       emit DisputeFinalized(_id, msg.sender, newAppState);
     } else {
-      c.state.finalizesAt = block.number + 1337;
-      c.state.status = Status.DISPUTE;
+      appInstance.state.finalizesAt = block.number + 1337;
+      appInstance.state.status = Status.DISPUTE;
 
       emit DisputeProgressed(
         _id,
@@ -316,7 +316,7 @@ contract AppRegistry {
         appState,
         action,
         newAppState,
-        c.state.disputeNonce,
+        appInstance.state.disputeNonce,
         block.number + 1337
       );
     }
@@ -342,15 +342,15 @@ contract AppRegistry {
     public
     onlyWhenChannelDispute(_id)
   {
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
     require(
-      keccak256(appState) == c.state.appStateHash,
+      keccak256(appState) == appInstance.state.appStateHash,
       "Invalid state submitted"
     );
 
     require(
-      keccak256(abi.encode(app)) == c.appHash,
+      keccak256(abi.encode(app)) == appInstance.appHash,
       "Tried to resolve dispute with non-agreed upon app"
     );
 
@@ -363,19 +363,19 @@ contract AppRegistry {
 
     bytes memory newAppState = executeAppApplyAction(app, appState, action);
 
-    c.state.appStateHash = keccak256(newAppState);
-    c.state.disputeNonce += 1;
-    c.state.latestSubmitter = msg.sender;
+    appInstance.state.appStateHash = keccak256(newAppState);
+    appInstance.state.disputeNonce += 1;
+    appInstance.state.latestSubmitter = msg.sender;
 
     if (claimFinal) {
       require(isAppStateTerminal(app, newAppState));
-      c.state.finalizesAt = block.number;
-      c.state.status = Status.OFF;
+      appInstance.state.finalizesAt = block.number;
+      appInstance.state.status = Status.OFF;
 
       emit DisputeFinalized(_id, msg.sender, newAppState);
     } else {
-      c.state.status = Status.DISPUTE;
-      c.state.finalizesAt = block.number + c.defaultTimeout;
+      appInstance.state.status = Status.DISPUTE;
+      appInstance.state.finalizesAt = block.number + appInstance.defaultTimeout;
 
       emit DisputeProgressed(
         _id,
@@ -383,8 +383,8 @@ contract AppRegistry {
         appState,
         action,
         newAppState,
-        c.state.disputeNonce,
-        block.number + c.defaultTimeout
+        appInstance.state.disputeNonce,
+        block.number + appInstance.defaultTimeout
       );
     }
   }
@@ -397,24 +397,24 @@ contract AppRegistry {
     public
     onlyWhenChannelDispute(_id)
   {
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
     bytes32 stateHash = computeStateHash(
       _id,
-      c.state.appStateHash,
-      c.state.nonce,
-      c.defaultTimeout
+      appInstance.state.appStateHash,
+      appInstance.state.nonce,
+      appInstance.defaultTimeout
     );
 
     require(
-      signatures.verifySignatures(stateHash, c.auth.signingKeys),
+      signatures.verifySignatures(stateHash, appInstance.auth.signingKeys),
       "Invalid signatures"
     );
 
-    c.state.disputeNonce = 0;
-    c.state.finalizesAt = 0;
-    c.state.status = Status.ON;
-    c.state.latestSubmitter = msg.sender;
+    appInstance.state.disputeNonce = 0;
+    appInstance.state.finalizesAt = 0;
+    appInstance.state.status = Status.ON;
+    appInstance.state.latestSubmitter = msg.sender;
 
     emit DisputeCancelled(_id, msg.sender);
   }
@@ -428,24 +428,24 @@ contract AppRegistry {
     public
     onlyWhenChannelClosed(_id)
   {
-    AppInstance storage c = appInstances[_id];
+    AppInstance storage appInstance = appInstances[_id];
 
     require(
-      keccak256(finalState) == c.state.appStateHash,
+      keccak256(finalState) == appInstance.state.appStateHash,
       "Tried to set resolution with incorrect final state"
     );
 
     require(
-      keccak256(terms) == c.termsHash,
+      keccak256(terms) == appInstance.termsHash,
       "Tried to set resolution with non-agreed upon terms"
     );
 
     require(
-      keccak256(abi.encode(app)) == c.appHash,
+      keccak256(abi.encode(app)) == appInstance.appHash,
       "Tried to set resolution with non-agreed upon app"
     );
 
-    c.resolution = getAppResolution(app, finalState, terms);
+    appInstance.resolution = getAppResolution(app, finalState, terms);
   }
 
   /// @notice A helper method to check if the state of the channel is final by
