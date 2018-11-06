@@ -4,7 +4,7 @@ import { AbstractContract, expect } from "../../utils";
 import * as Utils from "../../utils/misc";
 
 const web3 = (global as any).web3;
-const { provider, unlockedAccount } = Utils.setupTestEnv(web3);
+const { unlockedAccount } = Utils.setupTestEnv(web3);
 
 // HELPER DATA
 enum Status {
