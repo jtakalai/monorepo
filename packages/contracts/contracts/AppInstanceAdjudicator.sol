@@ -58,7 +58,7 @@ contract AppInstanceAdjudicator {
     address[] signingKeys;
   }
 
-  struct App {
+  struct AppInterface {
     address addr;
     bytes4 applyAction;
     bytes4 resolve;
@@ -237,7 +237,7 @@ contract AppInstanceAdjudicator {
   /// @dev Note this function is only callable when the state channel is in an ON state
   function createDispute(
     bytes32 _id,
-    App app,
+    AppInterface app,
     bytes appState,
     uint256 nonce,
     bytes action,
@@ -333,7 +333,7 @@ contract AppInstanceAdjudicator {
   /// @dev This function is only callable when the state channel is in a DISPUTE state
   function progressDispute(
     bytes32 _id,
-    App app,
+    AppInterface app,
     bytes appState,
     bytes action,
     bytes actionSignature,
@@ -424,7 +424,7 @@ contract AppInstanceAdjudicator {
   /// @param finalState The ABI encoded version of the finalized application state
   /// @param terms The ABI encoded version of the already agreed upon terms
   /// @dev Note this function is only callable when the state channel is in an OFF state
-  function setResolution(bytes32 _id, App app, bytes finalState, bytes terms)
+  function setResolution(bytes32 _id, AppInterface app, bytes finalState, bytes terms)
     public
     onlyWhenChannelClosed(_id)
   {
@@ -518,7 +518,7 @@ contract AppInstanceAdjudicator {
   /// @param app An `App` struct including all information relevant to interface with an app
   /// @param appState The ABI encoded version of some application state
   /// @return A boolean indicating if the application state is terminal or not
-  function isAppStateTerminal(App app, bytes appState)
+  function isAppStateTerminal(AppInterface app, bytes appState)
     private
     view
     returns (bool)
@@ -532,7 +532,7 @@ contract AppInstanceAdjudicator {
   /// @param app An `App` struct including all information relevant to interface with an app
   /// @param appState The ABI encoded version of some application state
   /// @return An address representing the turn taker in the `signingKeys`
-  function getAppTurnTaker(bytes32 _id, App app, bytes appState)
+  function getAppTurnTaker(bytes32 _id, AppInterface app, bytes appState)
     private
     view
     returns (address)
@@ -554,7 +554,7 @@ contract AppInstanceAdjudicator {
   /// @param appState The ABI encoded version of some application state
   /// @param action The ABI encoded version of some application action
   /// @return A bytes array of the ABI encoded newly computed application state
-  function executeAppApplyAction(App app, bytes appState, bytes action)
+  function executeAppApplyAction(AppInterface app, bytes appState, bytes action)
     private
     view
     returns (bytes)
@@ -569,7 +569,7 @@ contract AppInstanceAdjudicator {
   /// @param appState The ABI encoded version of some application state
   /// @param terms The ABI encoded version of the transfer terms
   /// @return A `Transfer.Transaction` struct with all encoded information of the resolution
-  function getAppResolution(App app, bytes appState, bytes terms)
+  function getAppResolution(AppInterface app, bytes appState, bytes terms)
     private
     view
     returns (Transfer.Transaction)
