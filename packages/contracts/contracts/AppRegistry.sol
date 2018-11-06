@@ -6,12 +6,12 @@ import "./lib/StaticCall.sol";
 import "./lib/Transfer.sol";
 
 
-/// @title AppInstanceAdjudicator - A generalized state channel application contract
+/// @title AppRegistry - A generalized state channel application contract
 /// @author Liam Horne - <liam@l4v.io>
 /// @notice Supports the adjudication and timeout guarantees required by state channel
 /// applications to be secure in a gas and storage-optimized manner. Resolves to a
 /// `Transfer.Transaction` when the channel is closed.
-contract AppInstanceAdjudicator {
+contract AppRegistry {
 
   using Transfer for Transfer.Transaction;
   using StaticCall for address;

@@ -31,7 +31,7 @@ const computeHash = (stateHash: string, nonce: number, timeout: number) =>
     ["0x19", [A.address, B.address], nonce, timeout, stateHash]
   );
 
-contract("AppInstanceAdjudicator", (accounts: string[]) => {
+contract("AppRegistry", (accounts: string[]) => {
   const TEST_ID = ethers.utils.solidityKeccak256(
     ["address", "address[]", "bytes32", "bytes32", "uint256"],
     [
@@ -65,8 +65,8 @@ contract("AppInstanceAdjudicator", (accounts: string[]) => {
 
   // @ts-ignore
   beforeEach(async () => {
-    const appInstanceAdjudicator = await AbstractContract.loadBuildArtifact(
-      "AppInstanceAdjudicator",
+    const appRegistry = await AbstractContract.loadBuildArtifact(
+      "AppRegistry",
       {
         StaticCall: AbstractContract.loadBuildArtifact("StaticCall"),
         Signatures: AbstractContract.loadBuildArtifact("Signatures"),
@@ -74,7 +74,7 @@ contract("AppInstanceAdjudicator", (accounts: string[]) => {
       }
     );
 
-    judge = await appInstanceAdjudicator.deploy(unlockedAccount);
+    judge = await appRegistry.deploy(unlockedAccount);
 
     await judge.functions.registerAppInstance(
       accounts[0],
