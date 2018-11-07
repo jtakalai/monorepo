@@ -99,7 +99,7 @@ function setupInstallState(): NodeState {
   return new NodeState(channelStates, EMPTY_NETWORK_CONTEXT);
 }
 
-function validateSetupInfos(infos: cf.channel.StateChannelInfos) {
+function validateSetupInfos(infos: cf.channel.ChannelStates) {
   expect(Object.keys(infos).length).toEqual(1);
   const info = infos[UNUSED_FUNDED_ACCOUNT];
   expect(info.counterParty).toEqual(B_ADDRESS);
@@ -149,7 +149,7 @@ function installClientMsg(): cf.node.ClientActionMessage {
 }
 
 function validateInstallInfos(
-  infos: cf.channel.StateChannelInfos,
+  infos: cf.channel.ChannelStates,
   expectedCfAddr: cf.utils.H256
 ) {
   const stateChannel = infos[UNUSED_FUNDED_ACCOUNT];

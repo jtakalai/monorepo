@@ -12,7 +12,7 @@ export interface MiddlewareResult {
  * The return value from the STATE_TRANSITION_PROPOSE middleware.
  */
 export interface StateProposal {
-  state: cf.channel.StateChannelInfos;
+  state: cf.channel.ChannelStates;
   cfAddr?: cf.utils.H256;
 }
 

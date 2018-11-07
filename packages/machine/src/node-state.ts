@@ -74,9 +74,9 @@ export class NodeState {
   }
 
   /**
-   * @returns a deep copy of the StateChannelInfos.
+   * @returns a deep copy of the ChannelStates.
    */
-  public stateChannelInfosCopy(): cf.channel.StateChannelInfos {
+  public stateChannelInfosCopy(): cf.channel.ChannelStates {
     return deserialize(lodash.cloneDeep(this.channelStates));
   }
 

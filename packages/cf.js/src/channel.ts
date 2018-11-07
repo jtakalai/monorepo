@@ -202,11 +202,7 @@ export interface StateChannelInfo {
   owners(): string[];
 }
 
-export interface StateChannelInfos {
-  [s: string]: StateChannelInfo;
-}
-
-// Tree of all the stateChannel and appChannel state
+// Tree of all the stateChannel and appInstance state
 export interface ChannelStates {
   [s: string]: StateChannelInfo;
 }
